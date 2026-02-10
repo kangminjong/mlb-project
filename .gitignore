@@ -1,0 +1,114 @@
+# ==========================
+# 1. Python & Virtual Env
+# ==========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 가상환경 (Virtual Environments)
+# 보통 venv, env, .venv 등으로 만드니 다 포함합니다.
+venv/
+env/
+.env
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ==========================
+# 2. Environment & Secrets (보안 필수!)
+# ==========================
+# 환경변수 파일 (API Key, DB 비밀번호 등)
+.env
+.env.*
+.flaskenv
+env.sh
+secrets.json
+credentials.json
+# 혹시 config.py에 비번을 하드코딩 했다면 이것도 추가해야 함 (권장하진 않음)
+# config.py 
+
+# ==========================
+# 3. OS & IDE (Editor)
+# ==========================
+# Mac
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains (PyCharm)
+.idea/
+
+# ==========================
+# 4. Airflow & Docker Specific
+# ==========================
+# Airflow 로컬 실행 시 생성되는 파일들
+airflow.db
+airflow.cfg
+unittests.cfg
+webserver_config.py
+
+# Airflow 로그
+logs/
+*.log
+*.err
+*.pid
+
+# Docker 마운트용 폴더 (보통 로컬 테스트용)
+docker-context/
+
+# ==========================
+# 5. Data Files (중요!)
+# ==========================
+# 수집한 원본 데이터는 절대 Git에 올리지 않습니다. (용량, 보안 문제)
+data/
+output/
+dataset/
+postgres_data/
+# 특정 확장자 차단
+*.csv
+*.tsv
+*.parquet
+*.avro
+
+# 단, JSON은 설정 파일일 수도 있으니 data 폴더 안의 json만 무시하거나
+# 명확하게 데이터 파일명 패턴을 지정하는 것이 좋습니다.
+# 여기서는 data 폴더를 통째로 막았으므로 안심입니다.
+
+# ==========================
+# 6. Jupyter Notebook
+# ==========================
+.ipynb_checkpoints
+profile_default/
+ipython_config.py 
+

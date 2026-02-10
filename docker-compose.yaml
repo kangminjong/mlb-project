@@ -1,0 +1,193 @@
+x-airflow-common:
+  &airflow-common
+  build: .
+  # [변경 1] user: "0:0" 제거 -> 기본 airflow 유저로 실행 (라이브러리 경로 문제 해결)
+  environment:
+    &airflow-common-env
+    # [변경 2] HOME 강제 지정 제거 (이미지 기본값 사용)
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMP LES: 'false'
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+    AIRFLOW__CORE__TEST_CONNECTION: 'Enabled'
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+    # MLflow 설정
+    MLFLOW_TRACKING_URI: http://mlflow:5000
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '120.0'
+  networks:
+    - mlb_network
+  volumes:
+    - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
+    - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
+    - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
+    - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+    - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
+    # MLflow 공유 볼륨
+    - ./mlflow_data:/mlflow_db
+  depends_on:
+    &airflow-common-depends-on
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+
+services:
+  # 1. Airflow 메타데이터 DB
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    networks:
+      - mlb_network
+    restart: always
+
+  # 2. MLB 데이터 저장용 DB
+  mlb_postgres:
+    image: postgres:15-alpine
+    container_name: mlb_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    restart: always
+    networks:
+      - mlb_network
+
+  # 3. Redis
+  redis:
+    image: redis:latest
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+    networks:
+      - mlb_network
+    restart: always
+
+  # 4. MLflow Server
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: mlflow
+    hostname: mlflow
+    # MLflow는 파일 쓰기 권한 때문에 Root 유지 권장 (단독 실행이라 괜찮음)
+    user: "0:0"
+    networks:
+      - mlb_network
+    ports:
+      - "8081:5000"
+    volumes:
+      - ./mlflow_data:/mlflow_db
+    environment:
+      - TZ=Asia/Seoul
+      - MLFLOW_SERVER_GUNICORN_OPTS=--forwarded-allow-ips=* --proxy-allow-from=*
+    entrypoint: ["mlflow", "server"]
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5000"
+      - --backend-store-uri
+      - sqlite:///mlflow_db/mlflow.db
+      - --default-artifact-root
+      - /mlflow_db/artifacts
+
+  # 5. Airflow Services
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-worker:
+    <<: *airflow-common
+    command: celery worker
+    # worker에서는 root 제거 효과가 큼 (라이브러리 경로 정상화)
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-triggerer:
+    <<: *airflow-common
+    command: triggerer
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  # [초기화 컨테이너: 권한 해결사]
+  airflow-init:
+    <<: *airflow-common
+    # user: "0:0"  <-- [삭제됨] 절대 쓰지 마세요!
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        # 1. DB 초기화 (이제 airflow 유저로 실행되므로 정상 작동함)
+        airflow db migrate
+
+        # 2. 관리자 계정 생성
+        airflow users create \
+          --username admin \
+          --firstname MLB \
+          --lastname Admin \
+          --role Admin \
+          --email admin@example.com \
+          --password admin
+
+        exec /entrypoint airflow version
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}:/sources
+      - ./mlflow_data:/mlflow_db
+
+volumes:
+  postgres-db-volume:
+
+networks:
+  mlb_network:
