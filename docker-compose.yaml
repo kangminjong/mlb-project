@@ -89,28 +89,31 @@ services:
     image: ghcr.io/mlflow/mlflow:latest
     container_name: mlflow
     hostname: mlflow
-    # MLflow는 파일 쓰기 권한 때문에 Root 유지 권장 (단독 실행이라 괜찮음)
-    user: "0:0"
+    restart: always
+    ports:
+      - "5000:5000"
     networks:
       - mlb_network
-    ports:
-      - "8081:5000"
-    volumes:
-      - ./mlflow_data:/mlflow_db
     environment:
       - TZ=Asia/Seoul
-      - MLFLOW_SERVER_GUNICORN_OPTS=--forwarded-allow-ips=* --proxy-allow-from=*
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    volumes:
+      - ./mlflow_data:/mlflow_db
+      - /home/minjong/mlb-project/mlflow_data:/home/minjong/mlb-project/mlflow_data
     entrypoint: ["mlflow", "server"]
     command:
-      - --host
-      - 0.0.0.0
-      - --port
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
       - "5000"
-      - --backend-store-uri
-      - sqlite:///mlflow_db/mlflow.db
-      - --default-artifact-root
-      - /mlflow_db/artifacts
-
+      - "--backend-store-uri"
+      - "sqlite:////mlflow_db/mlflow.db"
+      - "--default-artifact-root"
+      - "/mlflow_db/artifacts"
+      - "--serve-artifacts"
+      # [핵심 수정] 대시(--) 추가 및 인자 분리
+      - "--allowed-hosts"
+      - "*"
   # 5. Airflow Services
   airflow-webserver:
     <<: *airflow-common

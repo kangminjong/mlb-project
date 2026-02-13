@@ -95,6 +95,7 @@ data/
 output/
 dataset/
 postgres_data/
+mlflow_data/
 # 특정 확장자 차단
 *.csv
 *.tsv

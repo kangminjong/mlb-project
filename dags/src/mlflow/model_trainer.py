@@ -12,26 +12,33 @@ from sklearn.metrics import mean_squared_error, r2_score
 
 class Modeltrainer:
     def __init__(self):
-        # [핵심 해결책] 주먹구구가 아닌 '엔지니어링적 우회'
-        # mlflow:5000이라는 이름 대신 IP 주소를 사용하여 DNS Rebinding 보안 필터를 통과합니다.
-        try:
-            mlflow_ip = socket.gethostbyname("mlflow")
-            tracking_uri = f"http://{mlflow_ip}:5000"
-        except socket.gaierror:
-            # 도커 환경이 아닐 경우를 대비한 Fallback
-            tracking_uri = "http://localhost:5000"
+        # [핵심 수정] 복잡한 IP 조회 로직 제거 -> 환경변수 기반의 정석 설정
+        # 1. Docker Compose에서 설정한 환경변수(MLFLOW_TRACKING_URI)를 우선 사용
+        # 2. 없으면 로컬 개발환경으로 간주하고 localhost 사용
+        self.tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
         
-        mlflow.set_tracking_uri(tracking_uri)
-        print(f"[INFO] MLflow Tracking URI set to: {tracking_uri}")
+        mlflow.set_tracking_uri(self.tracking_uri)
+        print(f"[INFO] MLflow Tracking URI set to: {self.tracking_uri}")
 
         self.experiment_name = "MLB_OPS_Prediction"
-        artifact_path = "file:///mlflow_db/artifacts"
         
-        # [정석] 실험이 없으면 생성, 있으면 설정
-        if not mlflow.get_experiment_by_name(self.experiment_name):
-            mlflow.create_experiment(self.experiment_name)
-        mlflow.set_experiment(self.experiment_name)
+        # [안정성 강화] 실험 생성 및 설정 로직
+        try:
+            # 실험이 이미 있는지 확인하고, 없으면 생성합니다.
+            if not mlflow.get_experiment_by_name(self.experiment_name):
+                print(f"[INFO] Creating new experiment: {self.experiment_name}")
+                mlflow.create_experiment(self.experiment_name)
             
+            # 해당 실험을 활성화합니다.
+            mlflow.set_experiment(self.experiment_name)
+            print(f"[INFO] Active experiment set to: {self.experiment_name}")
+            
+        except Exception as e:
+            # MLflow 서버가 아직 준비되지 않았을 때 DAG 전체가 죽는 것을 방지
+            print(f"[WARN] Failed to connect to MLflow or set experiment. Error: {e}")
+            print(f"[WARN] Training will continue, but logging might fail.")
+
+        # 모델 학습에 사용할 Feature 정의
         self.feature_cols = ['hits', 'doubles', 'triples', 'hr', 'rbi', 'bb', 'so', 'hbp', 'gdp']
         self.target_col = 'target_ops'
     

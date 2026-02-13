@@ -33,20 +33,25 @@ class MlbDatabase:
         else:
             season_type = 'Postseason'
         for data in raw_data:
-            rows.append((game_date, json.dumps(data), season, season_type))
-        pg_hook.insert_rows(table = "mlb_statcast", rows = rows, target_fields = ["game_date", "game_data", "season", "season_type"])
+            game_pk = data['game_pk']
+            at_bat_number = data['at_bat_number']
+            pitch_number = data['pitch_number']
+            rows.append((game_pk, at_bat_number, pitch_number, game_date, json.dumps(data), season, season_type))
+        pg_hook.insert_rows(table = "mlb_statcast", rows = rows, target_fields = ["game_pk", "at_bat_number", "pitch_number", "game_date", "game_data", "season", "season_type"], replace=True, replace_index=["game_pk", "at_bat_number", "pitch_number"])
         
     def insert_pitching_stats(self, raw_data, pg_hook, season_type):
         rows = []
         for data in raw_data:
-            rows.append((2025, season_type, json.dumps(data),))
-        pg_hook.insert_rows(table = "mlb_pitching_stats", rows = rows, target_fields = ["season", "season_type","game_data"])
+            mlbID = data['mlbID']
+            rows.append((mlbID, 2025, season_type, json.dumps(data),))
+        pg_hook.insert_rows(table = "mlb_pitching_stats", rows = rows, target_fields = ["mlb_id","season", "season_type","game_data"], replace=True, replace_index=["mlb_id", "season", "season_type"])
 
     def insert_batting_stats(self, raw_data, pg_hook, season_type):
         rows = []
         for data in raw_data:
-            rows.append((2025, season_type, json.dumps(data)))
-        pg_hook.insert_rows(table = "mlb_batting_stats", rows = rows, target_fields = ["season", "season_type", "game_data"])
+            mlbID = data['mlbID']
+            rows.append((mlbID, 2025, season_type, json.dumps(data)))
+        pg_hook.insert_rows(table = "mlb_batting_stats", rows = rows, target_fields = ["mlb_id", "season", "season_type", "game_data"], replace=True, replace_index=["mlb_id", "season", "season_type"])
     
     def insert_pitching_stats_range(self, raw_data, pg_hook, game_date):
         rows = []
@@ -57,14 +62,11 @@ class MlbDatabase:
         else:
             season_type = 'Postseason'
         for data in raw_data:
-            rows.append((date_obj, json.dumps(data), season, season_type))
-        pg_hook.insert_rows(table = "mlb_pitching_range_stats", rows = rows, target_fields = ["game_date", "game_data", "season", "season_type"])
+            mlb_id = data["mlbID"]
+            rows.append((mlb_id, date_obj, json.dumps(data), season, season_type))
+        pg_hook.insert_rows(table = "mlb_pitching_range_stats", rows = rows, target_fields = ["mlb_id", "game_date", "game_data", "season", "season_type"], replace=True, replace_index=["mlb_id", "game_date"])
         
     def insert_batting_stats_range(self, raw_data, pg_hook, game_date):
-
-        delete_sql = f"DELETE FROM mlb_batting_range_stats WHERE game_date = '{game_date}'"
-        pg_hook.run(delete_sql)
-
         rows = []
         date_obj = datetime.strptime(game_date, "%Y-%m-%d")
         season = date_obj.year
@@ -78,7 +80,9 @@ class MlbDatabase:
         # 3. 데이터 가공
         # raw_data 안의 각 선수 데이터를 튜플 형태로 변환
         for data in raw_data:
+            mlb_id = data["mlbID"]
             rows.append((
+                mlb_id,
                 date_obj, 
                 json.dumps(data), # JSONB 대응을 위한 직렬화
                 season, 
@@ -90,10 +94,11 @@ class MlbDatabase:
         pg_hook.insert_rows(
             table="mlb_batting_range_stats", 
             rows=rows, 
-            target_fields=["game_date", "game_data", "season", "season_type"]
+            target_fields=["mlb_id", "game_date", "game_data", "season", "season_type"],
+            replace=True, 
+            replace_index=["mlb_id", "game_date"]
         )
         
-        print(f"✅ {game_date}: {len(rows)}건의 선수 데이터 적재 완료 (Delete-Insert 수행)")
     
     def insert_team_batting(self, rawdata, pg_hook):
         
@@ -117,14 +122,20 @@ class MlbDatabase:
     def insert_batting(self, rawdata, pg_hook):
         rows = []
         for data in rawdata:
-            rows.append((json.dumps(data),))
-        pg_hook.insert_rows(table = "mlb_batting", rows = rows, target_fields = ["game_data"])
+            iDfg = data["IDfg"]
+            season = data["Season"]
+            team = data ["Team"] 
+            rows.append((iDfg, season, team, json.dumps(data),))
+        pg_hook.insert_rows(table = "mlb_batting", rows = rows, target_fields = ["player_id", "season", "team", "stats"], replace=True, replace_index=["player_id", "season", "team"])
 
     def insert_pitching(self, rawdata, pg_hook):
         rows = []
         for data in rawdata:
-            rows.append((json.dumps(data),))
-        pg_hook.insert_rows(table = "mlb_pitching", rows = rows, target_fields = ["game_data"])
+            iDfg = data["IDfg"]
+            season = data["Season"]
+            team = data ["Team"] 
+            rows.append((iDfg, season, team, json.dumps(data),))
+        pg_hook.insert_rows(table = "mlb_pitching", rows = rows, target_fields = ["player_id", "season", "team", "stats"], replace=True, replace_index=["player_id", "season", "team"])
     
     def clean_date(self, game_date):
         game_date = game_date // 1000

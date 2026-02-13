@@ -1,10 +1,10 @@
 apache-airflow
+apache-airflow-providers-postgres
 pandas
-git+https://github.com/jldbc/pybaseball.git
+numpy
+requests
 python-dotenv
 scikit-learn>=1.4
-Requests
-apache-airflow-providers-postgres
-mlflow
 xgboost
-
+mlflow
+git+https://github.com/jldbc/pybaseball.git

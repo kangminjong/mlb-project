@@ -67,10 +67,10 @@ def insert_battingstats(**kwargs):
 with DAG(
     dag_id='my_stat_dag', # Airflow 웹에 뜰 이름
     default_args=DEFAULT_ARGS,
-    schedule='@daily', # 매일 실행
+    schedule=None, # 매일 실행
     catchup=False, # 과거 데이터 한꺼번에 돌리지 않기 (테스트용)
     start_date=MLB_2025_SEASON['start_date'],
-    end_date=MLB_2025_SEASON['end_date'],
+    # end_date=MLB_2025_SEASON['end_date'],
     max_active_runs=1 
 ) as dag:
 
