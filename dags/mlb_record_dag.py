@@ -70,12 +70,14 @@ with DAG(
     )       
     task2 = PythonOperator(
         task_id = "insert_pitching",
-        python_callable=insert_pitching
+        python_callable=insert_pitching,
+        retries=0
     )
     
     task3 = PythonOperator(
         task_id = "insert_batting",
-        python_callable=insert_batting
+        python_callable=insert_batting,
+        retries=0
     )
 
 task1 >> task2 >> task3

@@ -35,7 +35,7 @@ def insert_pitching_stats_range(**kwargs):
         print(f"오류메시지:{e}")
         print(f"오류경기날짜:{execution_date}")
         json_decode_alarm(f"json파싱에러:{execution_date}")
-        raise AirflowSkipException
+        raise
     mlb.insert_pitching_stats_range(raw_data, pg_hook, execution_date)
 
 def insert_batting_stats_range_data(**kwargs):
@@ -55,7 +55,7 @@ def insert_batting_stats_range_data(**kwargs):
         print(f"오류메시지:{e}")
         print(f"오류경기날짜:{execution_date}")
         json_decode_alarm(f"json파싱에러:{execution_date}")
-        raise AirflowSkipException
+        raise 
     mlb.insert_batting_stats_range(raw_data, pg_hook, execution_date)
 
 with DAG(   
@@ -74,11 +74,13 @@ with DAG(
     )       
     task2 = PythonOperator(
         task_id = "insert_pitching_stats_range_task",
-        python_callable=insert_pitching_stats_range
+        python_callable=insert_pitching_stats_range,
+        retries=0
     )
     
     task3 = PythonOperator(
         task_id = "insert_batting_stats_range_task",
-        python_callable=insert_batting_stats_range_data
+        python_callable=insert_batting_stats_range_data,
+        retries=0
     )
 task1 >> task2 >> task3

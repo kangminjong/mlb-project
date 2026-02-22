@@ -9,18 +9,6 @@ from datetime import datetime
 #     port="포트번호(보통 5432)"
 # )
 class MlbDatabase:
-    def __init__(self, base_dir = "/opt/airflow/data"):
-        self.base_dir = base_dir
-        
-        os.makedirs(self.base_dir, exist_ok=True)
-        self.statcast_dir = os.path.join(self.base_dir,"statcast_data")
-        self.pitchingstats_dir = os.path.join(self.base_dir,"pitchingstats_data")
-        self.battingstats_dir = os.path.join(self.base_dir,"battingstats_data")
-        
-        os.makedirs(self.statcast_dir, exist_ok=True)
-        os.makedirs(self.pitchingstats_dir, exist_ok=True)
-        os.makedirs(self.battingstats_dir, exist_ok=True)
-    
     def insert_statcast(self, raw_data, pg_hook):
         rows = []
         if not raw_data:

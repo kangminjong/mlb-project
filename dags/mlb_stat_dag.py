@@ -18,50 +18,63 @@ def run_my_collector(**kwargs):
 def insert_pitchingstats(**kwargs):
     save_dir = "/opt/airflow/data/pitching_stats_data"
     mlb = MlbDatabase()
-    execution_date =  kwargs["ds"]
-    pg_hook = PostgresHook(postgres_conn_id='my_db_connection', autocommit=True)
-    save_dir_path_RegularSeason = os.path.join(save_dir, "pitching_stat_RegularSeason.json")
-    save_dir_path_Postseason = os.path.join(save_dir, "pitching_stat_Postseason.json")
-    print(save_dir_path_RegularSeason)
+    pg_hook = PostgresHook(postgres_conn_id="my_db_connection", autocommit=True)
+
+    reg_path = os.path.join(save_dir, "pitching_stat_RegularSeason.json")
+    post_path = os.path.join(save_dir, "pitching_stat_Postseason.json")
+
+    # RegularSeason: 없으면 스킵(진짜로 수집이 안 된 거라서)
     try:
-        with open(save_dir_path_RegularSeason, 'r', encoding='utf-8') as f1:
-            raw_data_RegularSeason = json.load(f1)
-        with open(save_dir_path_Postseason, "r", encoding='utf-8') as f2:
-            raw_data_Postseason = json.load(f2)
+        with open(reg_path, "r", encoding="utf-8") as f:
+            raw_reg = json.load(f)
     except FileNotFoundError:
-        print("해당 날짜 경기 없음")
         raise AirflowSkipException
     except json.JSONDecodeError as e:
-        print(f"오류메시지:{e}")
-        print(f"오류경기날짜:{execution_date}")
-        json_decode_alarm(f"json파싱에러:{execution_date}")
-        raise AirflowSkipException
-    mlb.insert_pitching_stats(raw_data_RegularSeason, pg_hook, "RegularSeason")
-    mlb.insert_pitching_stats(raw_data_Postseason, pg_hook, "Postseason")
+        json_decode_alarm(f"json파싱에러(Regular): {kwargs['ds']} / {e}")
+        raise  # ✅ 스킵 말고 실패(재시도는 수집쪽에서 의미있음)
 
+    # Postseason: 없으면 정상(빈 데이터)
+    try:
+        with open(post_path, "r", encoding="utf-8") as f:
+            raw_post = json.load(f)
+    except FileNotFoundError:
+        raw_post = []
+    except json.JSONDecodeError as e:
+        json_decode_alarm(f"json파싱에러(Post): {kwargs['ds']} / {e}")
+        raise
+    mlb.insert_pitching_stats(raw_reg, pg_hook, "RegularSeason")
+    if raw_post:
+        mlb.insert_pitching_stats(raw_post, pg_hook, "Postseason")
+        
 def insert_battingstats(**kwargs):
     save_dir = "/opt/airflow/data/batting_stats_data"
     mlb = MlbDatabase()
-    pg_hook = PostgresHook(postgres_conn_id='my_db_connection', autocommit=True)
-    save_dir_path_RegularSeason = os.path.join(save_dir, "batting_stat_RegularSeason.json")
-    save_dir_path_Postseason = os.path.join(save_dir, "batting_stat_Postseason.json")
-    execution_date = kwargs["ds"]
-    execution_date = execution_date[:4]
+    pg_hook = PostgresHook(postgres_conn_id="my_db_connection", autocommit=True)
+
+    reg_path = os.path.join(save_dir, "batting_stat_RegularSeason.json")
+    post_path = os.path.join(save_dir, "batting_stat_Postseason.json")
+
     try:
-        with open(save_dir_path_RegularSeason, 'r', encoding='utf-8') as f1:
-            raw_data_RegularSeason = json.load(f1)
-        with open(save_dir_path_Postseason, 'r', encoding='utf-8') as f2:
-            raw_data_Postseason = json.load(f2)
+        with open(reg_path, "r", encoding="utf-8") as f:
+            raw_reg = json.load(f)
     except FileNotFoundError:
-        print(f"{execution_date} : 해당 날짜 경기 없음")
         raise AirflowSkipException
     except json.JSONDecodeError as e:
-        print(f"오류메시지:{e}")
-        print(f"오류경기날짜:{execution_date}")
-        json_decode_alarm(f"json파싱에러:{execution_date}")
-        raise AirflowSkipException
-    mlb.insert_batting_stats(raw_data_RegularSeason, pg_hook, "RegularSeason")
-    mlb.insert_batting_stats(raw_data_Postseason, pg_hook, "Postseason" )
+        json_decode_alarm(f"json파싱에러(Regular): {kwargs['ds']} / {e}")
+        raise
+
+    try:
+        with open(post_path, "r", encoding="utf-8") as f:
+            raw_post = json.load(f)
+    except FileNotFoundError:
+        raw_post = []
+    except json.JSONDecodeError as e:
+        json_decode_alarm(f"json파싱에러(Post): {kwargs['ds']} / {e}")
+        raise
+
+    mlb.insert_batting_stats(raw_reg, pg_hook, "RegularSeason")
+    if raw_post:
+        mlb.insert_batting_stats(raw_post, pg_hook, "Postseason")
 
 
 with DAG(
@@ -80,12 +93,14 @@ with DAG(
     )       
     task2 = PythonOperator(
         task_id = "insert_pitchingstats_task",
-        python_callable=insert_pitchingstats
+        python_callable=insert_pitchingstats,
+        retries=0
     )
     
     task3 = PythonOperator(
         task_id = "insert_battingstats_task",
-        python_callable=insert_battingstats
+        python_callable=insert_battingstats,
+        retries=0
     )
 
 task1 >> task2 >> task3

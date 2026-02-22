@@ -31,7 +31,7 @@ def insert_game(**kwargs):
         print(f"오류메시지:{e}")
         print(f"오류경기날짜:{execution_date}")
         json_decode_alarm(f"json파싱에러:{execution_date}")
-        raise AirflowSkipException
+        raise 
     mlb.insert_statcast(raw_data, pg_hook)
 
 with DAG(
@@ -50,7 +50,8 @@ with DAG(
     )       
     task2 = PythonOperator(
         task_id = "insert_task",
-        python_callable=insert_game
+        python_callable=insert_game,
+        retries=0
     )
 
 task1 >> task2 

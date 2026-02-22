@@ -3,17 +3,31 @@ from airflow.models import Variable
 
 
 def callback(context):
-    # context : 지금 dag가 돌아갔을때 모든 상황판
-    exception = context.get("exception") # 딕셔너리 객체여서 get
-    task_instance = context.get("task_instance") # 딕셔너리 객체여서 get
-    # 원래 객체를 추출한거라 task_instance.task_id가 맞지만 exception은 조금 특이해서 접근 안해도됨
-    message_content = f" 실패 발생! \n태스크: {task_instance.task_id} \n에러: {exception}" 
-    
-    url =  Variable.get("DISCORD_WEBHOOK_URL")
-    msg = {"content":message_content}
-    requests.post(url, json=msg)
-    
-def json_decode_alarm(message_content):
-    url =  Variable.get("DISCORD_WEBHOOK_URL")
-    msg = {"content":message_content}
-    requests.post(url, json=msg)
+    ti = context.get("task_instance")
+    ex = context.get("exception")
+
+    dag_id = getattr(ti, "dag_id", "unknown")
+    task_id = getattr(ti, "task_id", "unknown")
+    run_id = context.get("run_id", "unknown")
+    ds = context.get("ds", "unknown")
+    try_number = getattr(ti, "try_number", "unknown")
+    log_url = getattr(ti, "log_url", "unknown")
+
+    message_content = (
+        "Airflow Task Failed\n"
+        f"- dag: {dag_id}\n"
+        f"- task: {task_id}\n"
+        f"- ds: {ds}\n"
+        f"- run_id: {run_id}\n"
+        f"- try: {try_number}\n"
+        f"- log: {log_url}\n"
+        f"- error: {ex}\n"
+    )
+
+    url = Variable.get("DISCORD_WEBHOOK_URL")
+    requests.post(url, json={"content": message_content})
+
+
+def json_decode_alarm(message_content: str):
+    url = Variable.get("DISCORD_WEBHOOK_URL")
+    requests.post(url, json={"content": f"⚠️ JSON Decode Error\n{message_content}"})

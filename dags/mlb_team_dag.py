@@ -32,7 +32,7 @@ def insert_team_batting(**kwargs):
         print(f"오류메시지:{e}")
         print(f"오류경기날짜:{execution_date}")
         json_decode_alarm(f"json파싱에러:{execution_date}")
-        raise AirflowSkipException
+        raise 
     mlb.insert_team_batting(raw_data, pg_hook)
 
 def insert_team_pitching(**kwargs):
@@ -51,7 +51,7 @@ def insert_team_pitching(**kwargs):
         print(f"오류메시지:{e}")
         print(f"오류경기날짜:{execution_date}")
         json_decode_alarm(f"json파싱에러:{execution_date}")
-        raise AirflowSkipException
+        raise 
     mlb.insert_team_pitching(raw_data, pg_hook)
 
 def insert_team_fielding(**kwargs):
@@ -70,7 +70,7 @@ def insert_team_fielding(**kwargs):
         print(f"오류메시지:{e}")
         print(f"오류경기날짜:{execution_date}")
         json_decode_alarm(f"json파싱에러:{execution_date}")
-        raise AirflowSkipException
+        raise 
     mlb.insert_team_fielding(raw_data, pg_hook)
 
 with DAG(
@@ -90,17 +90,20 @@ with DAG(
     )       
     task2 = PythonOperator(
         task_id = "insert_team_batting_task",
-        python_callable=insert_team_batting
+        python_callable=insert_team_batting,
+        retries=0
     )
     
     task3 = PythonOperator(
         task_id = "insert_team_pitching_task",
-        python_callable=insert_team_pitching
+        python_callable=insert_team_pitching,
+        retries=0
     )
 
     task4 = PythonOperator(
         task_id = "insert_team_fielding_task",
-        python_callable = insert_team_fielding
+        python_callable = insert_team_fielding,
+        retries=0
     )
     
 task1 >> task2 >> task3 >> task4
