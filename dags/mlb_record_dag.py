@@ -32,7 +32,7 @@ def insert_pitching(**kwargs):
         print(f"오류메시지:{e}")
         print(f"오류경기날짜:{execution_date}")
         json_decode_alarm(f"json파싱에러:{execution_date}")
-        raise AirflowSkipException
+        raise 
     mlb.insert_pitching(raw_data, pg_hook)
 
 def insert_batting(**kwargs):
@@ -51,7 +51,7 @@ def insert_batting(**kwargs):
         print(f"오류메시지:{e}")
         print(f"오류경기날짜:{execution_date}")
         json_decode_alarm(f"json파싱에러:{execution_date}")
-        raise AirflowSkipException
+        raise 
     mlb.insert_batting(raw_data, pg_hook)
 
 with DAG(

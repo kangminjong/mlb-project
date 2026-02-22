@@ -14,7 +14,6 @@ def callback(context):
     requests.post(url, json=msg)
     
 def json_decode_alarm(message_content):
-    
     url =  Variable.get("DISCORD_WEBHOOK_URL")
     msg = {"content":message_content}
     requests.post(url, json=msg)

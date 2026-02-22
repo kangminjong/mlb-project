@@ -21,7 +21,7 @@ if os.path.exists(env_path):
 
 # URI 설정: WSL2에서 도커로 접근할 때는 localhost:5000이 기본입니다.
 MLFLOW_URI = "http://127.0.0.1:5000"
-MODEL_TYPE = "XGB"
+MODEL_TYPE = "RF"
 FEATURE_COLS = ['hits', 'doubles', 'triples', 'hr', 'rbi', 'bb', 'so', 'hbp', 'gdp']
 
 # DB 설정

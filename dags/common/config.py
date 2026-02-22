@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime,timedelta
 from common.callbacks import callback
 
 MLB_2025_SEASON = {
@@ -7,9 +7,12 @@ MLB_2025_SEASON = {
 }
 
 DEFAULT_ARGS = {
-    'owner': 'minjong',
-    'retries': 0,
-    'on_failure_callback': callback,
+    "owner": "minjong",
+    "retries": 3,
+    "retry_delay": timedelta(minutes=5),
+    "retry_exponential_backoff": True,
+    "max_retry_delay": timedelta(minutes=30),
+    "on_failure_callback": callback,
 }
 
 BASE_SAVE_DIR = "/opt/airflow/data"
