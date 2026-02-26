@@ -30,4 +30,15 @@ def callback(context):
 
 def json_decode_alarm(message_content: str):
     url = Variable.get("DISCORD_WEBHOOK_URL")
-    requests.post(url, json={"content": f"⚠️ JSON Decode Error\n{message_content}"})
+    requests.post(url, json={"content": f"JSON Decode Error\n{message_content}"})
+    
+def pk_missing_alarm(message_content: str):
+    try:
+        url = Variable.get("DISCORD_WEBHOOK_URL")
+        requests.post(
+            url,
+            json={"content": f"PK Missing (skipped rows)\n{message_content}"},
+            timeout=3
+        )
+    except Exception as e:
+        print(f"[pk_missing_alarm] failed: {e}")
