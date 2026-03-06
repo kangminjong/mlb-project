@@ -30,7 +30,7 @@ def callback(context):
 
 def json_decode_alarm(message_content: str):
     url = Variable.get("DISCORD_WEBHOOK_URL")
-    requests.post(url, json={"content": f"JSON Decode Error\n{message_content}"})
+    requests.post(url, json={"content": f"JSON Decode Error\n{message_content}"}, timeout=3)
     
 def pk_missing_alarm(message_content: str):
     try:

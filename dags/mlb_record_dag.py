@@ -10,9 +10,9 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from common.callbacks import json_decode_alarm
 
     
-def run_my_collector(**kwargs):
+def run_my_collector(ds, **kwargs):
     c = Collection()
-    execution_date =  kwargs["ds"]
+    season_year=int(ds[:4])
     c.collect_batting(2025)
     c.collect_pitching(2025)
     
@@ -66,7 +66,8 @@ with DAG(
 
     task1 = PythonOperator(
         task_id = "collect_task",
-        python_callable=run_my_collector
+        python_callable=run_my_collector,
+        op_kwargs={"ds":"{{ ds }}"}
     )       
     task2 = PythonOperator(
         task_id = "insert_pitching",

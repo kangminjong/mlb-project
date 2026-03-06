@@ -48,6 +48,8 @@ class Collection:
         os.replace(tmp_path, file_path)
 
     def _is_no_data_case(self, e: Exception) -> bool:
+        if isinstance(e, IndexError):
+            return True
         msg = str(e).lower()
         keywords = [
             "no data",
